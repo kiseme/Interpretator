@@ -9,7 +9,7 @@ namespace ELLE
 {
     public enum ElementType
     {
-        // NonTerminals
+        // Нетерминалы
         START,
         NEXT_PARAM,
         FUNC,
@@ -46,11 +46,10 @@ namespace ELLE
         FINISH,
         LTYPEDEF,
         ASS,
-        // Terminals
+        // Терминалы
         BEGIN,
         END,
         BY,
-        FN,
         OF,
         ARRAY,
         INT,
@@ -90,7 +89,6 @@ namespace ELLE
         CLOSE_SQUARE,
         OPEN_BRACKET,
         CLOSE_BRACKET,
-        COMMA,
         NONE
     }
 
@@ -155,6 +153,7 @@ namespace ELLE
             START,
             WORD,
             INTEGER,
+            EXPRESSION,
             FINISH
         };
 
@@ -171,10 +170,8 @@ namespace ELLE
             { "else",   ElementType.ELSE },
             { "begin",   ElementType.BEGIN },
             { "end",   ElementType.END },
-            { "==",     ElementType.EQ },
             { "!=",   ElementType.NEQ },
-            { "<=",   ElementType.LEQ },
-            { "=>",   ElementType.GEQ },
+            { ":=",   ElementType.ASSIGN },
         };
 
         //Проверка на ключевое слово
@@ -203,180 +200,251 @@ namespace ELLE
                 case '[': return 10;
                 case ']': return 11;
                 case ';': return 12;
-                case '\t':
+                case '\t': return 13;
                 case ' ': return 13;
+                case '\r': return 13;
                 case '\n': return 14;
-                default: return 15;
+                case '<': return 15;
+                case '>': return 16;
+                case ':': return 17;
+                case '=': return 18;
+                case '!': return 17;
+                default: return 19;
             }
         }
 
         // Таблица переходов
         int[,] Programs = new int[,]
         {
-                         //LET  DIG     +     -      *      /      {       }     (      )      [       ]      ;     \t     ' '     \n
-        /*START*/      {10,   20,     30,   40,    50,    60,    70,    80,    90,    100,   110,    120,   130,      0,     0,     0},
-        /*WORD*/       {140,  140,    150,  150,  150,   150,   400,   400,   150,   150,   150,    150,   400,     150,    150,  150},
-        /*INTEGER*/    {500,  160,    170,  170,   170,  170,   400,   170,   170,   170,   170,    170,    170,   170,   170,   170},
+                       //LET  DIG     +     -      *      /      {       }     (      )      [       ]      ;        \t     \n         <        >       :!       =           ERR
+        /*START*/      {10,   20,     30,   40,    50,    60,    70,    80,    90,    100,   110,    120,   130,      0,     1,       11,       12,     13,     14,         400},
+        /*WORD*/       {140,  140,    150,  150,  150,   150,   400,   400,   150,   150,   150,    150,    400,     150,    150,     150,      150,   150,    150,         400},
+        /*INTEGER*/    {500,  160,    170,  170,   170,  170,   400,   170,   170,   170,   170,    170,    170,   170,     170,      170,      170,   170,    170,         400},
+        /*EXPRESSIONS*/{400,  400,    400,  400,   400,  400,   400,   400,   400,   400,   400,    400,    400,   400,     400,     400,       400,   400,     15,         400},
         };
 
         int NumberSymbolNow = -1;     // Считываемый символ
         int NumberLineNow = 1;        // Считываемая линия
-        int NumberSymbolOnLine = 0;   // Номер символа на строке
+        int NumberSymbolOnLine = -1;   // Номер символа на строке
         int state = (int)State.START; // Состояние
         int NewNumber = 0;        // Новое считываемое число
         string NewLexemName = "";     // Новая лексема
 
-        //Старт работы лексического анализатора
+        //Работа лексического анализатора
         public LexAn(string inputCode)
         {
-            while (state != (int)State.FINISH && NumberSymbolNow + 1 < inputCode.Length)
+            if (inputCode == "") return; // Пустой файл
+            while (NumberSymbolNow + 1 < inputCode.Length)
             {
-                NumberSymbolNow++;
-                NumberSymbolOnLine++;
-                if (inputCode == "") return; // Пустой файл
-                char symbolNow = inputCode[NumberSymbolNow];
-                switch (Programs[state, GetCol(symbolNow)])
+                state = (int)State.START;
+                while (state != (int)State.FINISH && NumberSymbolNow + 1 < inputCode.Length)
                 {
-                    case 0:
-                        state = (int)State.START;
-                        break;
 
-                    #region первая буква
-                    case 10:
-                        NewLexemName = "" + symbolNow;
-                        state = (int)State.WORD;
-                        break;
-                    #endregion
+                    NumberSymbolNow++;
+                    NumberSymbolOnLine++;
 
-                    #region первая цифра
-                    case 20:
-                        NewNumber = (int)Char.GetNumericValue(symbolNow);
-                        NewLexemName = "" + symbolNow;
-                        state = (int)State.INTEGER;
-                        break;
-                    #endregion
+                    char symbolNow = inputCode[NumberSymbolNow];
+                    switch (Programs[state, GetCol(symbolNow)])
+                    {
+                        case 0:
+                            state = (int)State.START;
+                            break;
 
-                    #region +
-                    case 30:
-                        AddNewLexemInLexems("+", ElementType.PLUS, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region -
-                    case 40:
-                        AddNewLexemInLexems("-", ElementType.MINUS, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region *
-                    case 50:
-                        AddNewLexemInLexems("*", ElementType.MULT, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region /
-                    case 60:
-                        AddNewLexemInLexems("/", ElementType.DIVISION, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region {
-                    case 70:
-                        AddNewLexemInLexems("{", ElementType.OPEN_FIGURE, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region }
-                    case 80:
-                        AddNewLexemInLexems("}", ElementType.CLOSE_FIGURE, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region (
-                    case 90:
-                        AddNewLexemInLexems("(", ElementType.OPEN_BRACKET, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region )
-                    case 100:
-                        AddNewLexemInLexems(")", ElementType.CLOSE_BRACKET, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region [
-                    case 110:
-                        AddNewLexemInLexems("[", ElementType.OPEN_SQUARE, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region ]
-                    case 120:
-                        AddNewLexemInLexems("]", ElementType.CLOSE_SQUARE, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region ;
-                    case 130:
-                        AddNewLexemInLexems(";", ElementType.STATEMENT_END, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region ещё один символ
-                    case 140:
-                        NewLexemName += symbolNow;
-                        state = (int)State.WORD;
-                        break;
-                    #endregion
-
-                    #region конец слова
-                    case 150:
-                        AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-                    #endregion
-
-                    #region ещё одна цифра в числе
-                    case 160:
-                        NewNumber *= 10;
-                        NewNumber += (int)Char.GetNumericValue(symbolNow);
-                        state = (int)State.INTEGER;
-                        break;
-                    #endregion
-
-                    #region конец числа
-                    case 170:
-                        AddNewLexemInLexems(NewNumber.ToString(), ElementType.INT, NumberLineNow, NumberSymbolOnLine);
-                        state = (int)State.FINISH;
-                        break;
-
-                    #endregion
-
-                    #region ошибка unexpected lexem
-                    case 400:
-                        state = (int)State.FINISH;
-                        Console.WriteLine("unexpected lexem: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString());
-                        break;
-                    #endregion
-
-                    #region ошибка name starts with number
-                    case 500:
-                        state = (int)State.FINISH;
-                        Console.WriteLine("name starts with number: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString());
-                        break;
+                        #region <
+                        case 1:
+                            NumberLineNow++;
+                            NumberSymbolOnLine = -1;
+                            state = (int)State.START;
+                            break;
                         #endregion
+
+                        #region <
+                        case 11:
+                            AddNewLexemInLexems("<", ElementType.LESS, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region >
+                        case 12:
+                            AddNewLexemInLexems(">", ElementType.GREATER, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region !:
+                        case 13:
+                            NewLexemName = "" + symbolNow;
+                            state = (int)State.EXPRESSION;
+                            break;
+                        #endregion
+
+                        #region =
+                        case 14:
+                            AddNewLexemInLexems("=", ElementType.EQ, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region конец составного символа
+                        case 15:
+                            if (GetElementType(NewLexemName) == ElementType.NAME) { Console.WriteLine("unexpected lexem: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString()); }
+                            else { AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine); }
+                            NumberSymbolNow--;
+                            NumberSymbolOnLine--;
+                            break;
+                        #endregion
+
+                        #region первая буква
+                        case 10:
+                            NewLexemName = "" + symbolNow;
+                            state = (int)State.WORD;
+                            break;
+                        #endregion
+
+                        #region первая цифра
+                        case 20:
+                            NewNumber = (int)Char.GetNumericValue(symbolNow);
+                            NewLexemName = "" + symbolNow;
+                            state = (int)State.INTEGER;
+                            break;
+                        #endregion
+
+                        #region +
+                        case 30:
+                            AddNewLexemInLexems("+", ElementType.PLUS, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region -
+                        case 40:
+                            AddNewLexemInLexems("-", ElementType.MINUS, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region *
+                        case 50:
+                            AddNewLexemInLexems("*", ElementType.MULT, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region /
+                        case 60:
+                            AddNewLexemInLexems("/", ElementType.DIVISION, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region {
+                        case 70:
+                            AddNewLexemInLexems("{", ElementType.OPEN_FIGURE, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region }
+                        case 80:
+                            AddNewLexemInLexems("}", ElementType.CLOSE_FIGURE, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region (
+                        case 90:
+                            AddNewLexemInLexems("(", ElementType.OPEN_BRACKET, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region )
+                        case 100:
+                            AddNewLexemInLexems(")", ElementType.CLOSE_BRACKET, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region [
+                        case 110:
+                            AddNewLexemInLexems("[", ElementType.OPEN_SQUARE, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region ]
+                        case 120:
+                            AddNewLexemInLexems("]", ElementType.CLOSE_SQUARE, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region ;
+                        case 130:
+                            AddNewLexemInLexems(";", ElementType.STATEMENT_END, NumberLineNow, NumberSymbolOnLine);
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region ещё один символ
+                        case 140:
+                            NewLexemName += symbolNow;
+                            state = (int)State.WORD;
+                            break;
+                        #endregion
+
+                        #region конец слова
+                        case 150:
+                            AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine);
+                            NumberSymbolNow--;
+                            NumberSymbolOnLine--;
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region ещё одна цифра в числе
+                        case 160:
+                            NewNumber *= 10;
+                            NewNumber += (int)Char.GetNumericValue(symbolNow);
+                            state = (int)State.INTEGER;
+                            break;
+                        #endregion
+
+                        #region конец числа
+                        case 170:
+                            AddNewLexemInLexems(NewNumber.ToString(), ElementType.INT, NumberLineNow, NumberSymbolOnLine);
+                            NumberSymbolNow--;
+                            NumberSymbolOnLine--;
+                            state = (int)State.FINISH;
+                            break;
+                        #endregion
+
+                        #region ошибка unexpected lexem
+                        case 400:
+                            state = (int)State.FINISH;
+                            Console.WriteLine("unexpected lexem: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString());
+                            break;
+                        #endregion
+
+                        #region ошибка name starts with number
+                        case 500:
+                            state = (int)State.FINISH;
+                            Console.WriteLine("name starts with number: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString());
+                            break;
+                            #endregion
+                    }
                 }
+
+            }
+            switch (state)
+            {
+                case (int)State.INTEGER: AddNewLexemInLexems(NewNumber.ToString(), ElementType.INT, NumberLineNow, NumberSymbolOnLine); break;
+                case (int)State.WORD: AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine); break;
+                case (int)State.EXPRESSION:
+                    if (GetElementType(NewLexemName) == ElementType.NAME) { Console.WriteLine("unexpected lexem: line = " + NumberLineNow.ToString() + ", symbol = ", NumberSymbolOnLine.ToString()); }
+                    else { AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine); }
+                    break;
             }
             return;
         }
@@ -395,11 +463,12 @@ namespace ELLE
             LexAn lexem = new LexAn(code);
 
             //Результат работы лексического анализатора
+            Console.WriteLine("Лексемы:\r\n");
             for (int i = 0; i < lexem.lexems.Count; i++)
             {
-                Console.WriteLine("Лексемы:\r\n" + lexem.lexems[i].Name + " " +
-                                  "Линия: " + lexem.lexems[i].LinePos + " " +
-                                  "Номер: " + lexem.lexems[i].SimbolPos + " " +
+                Console.WriteLine(lexem.lexems[i].Name + " " +
+                                  "Строка: " + lexem.lexems[i].LinePos + " " +
+                                  "Номер символа в строке: " + lexem.lexems[i].SimbolPos + " " +
                                   "Тип: " + lexem.lexems[i].Type + "\r\n");
             }
             Console.WriteLine("\r\nПеременные:\r\n");
