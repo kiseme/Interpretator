@@ -9,58 +9,12 @@ namespace ELLE
 {
     public enum ElementType
     {
-        // Нетерминалы
         START,
-        NEXT_PARAM,
-        FUNC,
-        SUB_FUNC,
-        ARGS,
-        BLOCK,
-        TYPE_DESC,
-        ZARR,
-        NEXT_ARG,
-        TYPE,
-        STATEMENT,
-        EXPR,
-        DESC,
-        INDEX,
-        PARAM,
-        MULT_EXPR,
-        ADD_EXPR,
-        COMP_EXPR,
-        AND_EXPR,
-        OR_EXPR,
-        NEG,
-        LEXPR,
-        OR_TERM,
-        AND_FACTOR,
-        LCOMP_EXPR,
-        TERM,
-        FACTOR,
-        CEXPR,
-        Z,
-        TYPEDEF,
-        VALUE,
-        ELSEST,
-        EMPTY,
-        FINISH,
-        LTYPEDEF,
-        ASS,
         BOOL,
-        // Терминалы
         BEGIN,
         END,
-        BY,
-        OF,
         ARRAY,
         INT,
-        DOUBLE,
-        BYTE,
-        STRING,
-        INT_CONST,
-        DOUBLE_CONST,
-        BYTE_CONST,
-        STRING_CONST,
         NAME,
         WHILE,
         IF,
@@ -80,8 +34,6 @@ namespace ELLE
         GEQ,
         NEQ,
         STATEMENT_END, //;
-        TRUE,
-        FALSE,
         READ,
         WRITE,
         OPEN_FIGURE,
@@ -168,8 +120,6 @@ namespace ELLE
                 SimbolPos = ns
             });
         }
-
-
 
         //Состояния
         public enum State
@@ -494,11 +444,6 @@ namespace ELLE
         }
     }
 
-    public class SynAn
-    {
-
-    }
-
     class SyntaxAnalizator
     {
         public List<LexemString> OPS { get { return _OPS; } }
@@ -623,7 +568,7 @@ namespace ELLE
             {
                 switch (original[i].Type)
                 {
-                    #region ID
+                    #region Name
                     case ElementType.NAME:
                         tempOPS.Add(original[i]);
                         break;
@@ -986,7 +931,7 @@ namespace ELLE
                         break;
                     #endregion
 
-                    #region Gets =
+                    #region Assign :=
                     case ElementType.ASSIGN:
                         stackOperations.Push(original[i]);
                         break;
@@ -1960,7 +1905,7 @@ namespace ELLE
             {
                 switch (inOPS.String[i].Type)
                 {
-                    #region ID
+                    #region NAME
                     case ElementType.NAME:
                         tempLexStack.Push(inOPS.String[i]);
                         break;
@@ -2099,7 +2044,7 @@ namespace ELLE
                         break;
                     #endregion
 
-                    #region Gets =
+                    #region ASSIGN :=
                     case ElementType.ASSIGN:
                         if (!_onlyRead)
                         {
@@ -2676,8 +2621,8 @@ namespace ELLE
     {
         static void Main(string[] args)
         {
-            SyntaxAnalizator _syn;
-            Realizer _realiz;
+            SyntaxAnalizator syntax;
+            Realizer realiz;
             string code = File.ReadAllText("test1.txt");
             LexAn lexem = new LexAn(code);
 
@@ -2695,7 +2640,7 @@ namespace ELLE
             {
                 Console.WriteLine(lexem.numbers[i].Name + " - " + lexem.numbers[i].Meaning + "\r\n");
             }
-            Console.WriteLine("Массивы:\r\n");
+            /*Console.WriteLine("Массивы:\r\n");
             for (int i = 0; i < lexem.arrays.Count; i++)
             {
                 Console.WriteLine(lexem.arrays[i].Name + " - ");
@@ -2703,23 +2648,25 @@ namespace ELLE
                 {
                     Console.WriteLine(lexem.arrays[i].Meaning[j] + " ");
                 }
-            }
+            }*/
 
-            _syn = new SyntaxAnalizator(lexem.Lexems);
+            //Результат работы синтаксического анализатора
+            syntax = new SyntaxAnalizator(lexem.Lexems);
             Console.WriteLine("Созданные ОПС на основе исходных лексем:\r\n");
-            for (int i = 0; i < _syn.OPS.Count; i++)
+            for (int i = 0; i < syntax.OPS.Count; i++)
             {
-                for (int j = 0; j < _syn.OPS[i].String.Count; j++)
+                for (int j = 0; j < syntax.OPS[i].String.Count; j++)
                 {
-                    Console.Write(_syn.OPS[i].String[j].Name + " ");
+                    Console.Write(syntax.OPS[i].String[j].Name + " ");
                 }
                 Console.WriteLine("\r\n");
             }
 
-            _realiz = new Realizer(_syn.OPS, lexem.Numbers, lexem.Arrays);
-            for (int i = 0; i < _realiz.Result.Count; i++)
+            //Результат работы
+            realiz = new Realizer(syntax.OPS, lexem.Numbers, lexem.Arrays);
+            for (int i = 0; i < realiz.Result.Count; i++)
             {
-                Console.Write(_realiz.Result[i] + "\r\n");
+                Console.Write(realiz.Result[i] + "\r\n");
             }
 
             Console.ReadLine();
