@@ -205,6 +205,7 @@ namespace ELLE
         string NewLexemName = "";     // Новая лексема
         string NewVariableName = "";  // Имя новой переменной
 
+
         // Нахождение переменной по ее имени
         private int FindVariable(string name)
         {
@@ -216,6 +217,14 @@ namespace ELLE
                 }
             }
             return -1;
+        }
+
+
+        private bool ThisVariableAlreadyExist(string name)
+        {
+            if (FindVariable(name) >= 0) return true;
+            //if (type == Type.IntM) if (FindMassive(name) >= 0) return true;
+            return false;
         }
 
         //Работа лексического анализатора
@@ -387,9 +396,11 @@ namespace ELLE
                         #region конец слова
                         case 150:
                             AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine);
-                            if (GetElementType(NewLexemName) == ElementType.NAME)
+                            if (GetElementType(NewLexemName) == ElementType.NAME && !ThisVariableAlreadyExist(NewLexemName))
+                            {
                                 numbers.Add(new Number() { Name = NewLexemName, Meaning = 0 });
-                            NewVariableName = NewLexemName;
+                                NewVariableName = NewLexemName;
+                            }
                             NumberSymbolNow--;
                             NumberSymbolOnLine--;
                             state = (int)State.FINISH;
@@ -409,7 +420,11 @@ namespace ELLE
                             AddNewLexemInLexems(NewNumber.ToString(), ElementType.INT, NumberLineNow, NumberSymbolOnLine);
                             NumberSymbolNow--;
                             NumberSymbolOnLine--;
-                            numbers[FindVariable(NewVariableName)].Meaning = NewNumber;
+                            if (NewVariableName != "")
+                            {
+                                numbers[FindVariable(NewVariableName)].Meaning = NewNumber;
+                                NewVariableName = "";
+                            }
                             state = (int)State.FINISH;
                             break;
                         #endregion
@@ -2475,18 +2490,18 @@ namespace ELLE
                         case ElementType.READ:
                             if (!_whileTap)
                             {
-                                int rd = Console.Read();
+                                int rd = Convert.ToInt32(Console.ReadLine());
                                 if (result.Type == ElementType.NAME)
                                 {
                                     if ((indexF = _inter.FindNumber(result.Name)) != -1)
                                     {
-                                        _inter.Numbers[indexF].Meaning = Convert.ToInt32(rd);
+                                        _inter.Numbers[indexF].Meaning = rd;
                                     }
                                     else
                                     {
                                         if ((indexF = _inter.FindMassive(result.Name)) != -1)
                                         {
-                                            _inter.Massives[indexF].Meaning[result.Index] = Convert.ToInt32(rd);
+                                            _inter.Massives[indexF].Meaning[result.Index] = rd;
                                         }
                                     }
                                 }
@@ -2663,6 +2678,7 @@ namespace ELLE
             }
 
             //Результат работы
+            Console.Write("Результат работы" + "\r\n");
             realiz = new Realizer(syntax.OPS, lexem.Numbers, lexem.Arrays);
             for (int i = 0; i < realiz.Result.Count; i++)
             {
