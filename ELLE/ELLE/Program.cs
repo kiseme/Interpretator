@@ -134,7 +134,7 @@ namespace ELLE
         //Ключевые слова
         Dictionary<string, ElementType> Keywords = new Dictionary<string, ElementType>
         {
-            { "not",    ElementType.NOT},
+            { "array", ElementType.ARRAY },
             { "or",     ElementType.OR },
             { "and",    ElementType.AND },
             { "while",  ElementType.WHILE },
@@ -219,11 +219,24 @@ namespace ELLE
             return -1;
         }
 
-
-        private bool ThisVariableAlreadyExist(string name)
+        // Нахождение массива по его имени
+        private int FindMassive(string name)
         {
-            if (FindVariable(name) >= 0) return true;
-            //if (type == Type.IntM) if (FindMassive(name) >= 0) return true;
+            for (int i = 0; i < Arrays.Count; i++)
+            {
+                if (Arrays[i].Name == name)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+
+        private bool ThisVariableAlreadyExist(string name, ElementType type)
+        {
+            if (type == ElementType.NAME) if (FindVariable(name) >= 0) return true;
+            if (type == ElementType.ARRAY) if (FindMassive(name) >= 0) return true;
             return false;
         }
 
@@ -396,7 +409,7 @@ namespace ELLE
                         #region конец слова
                         case 150:
                             AddNewLexemInLexems(NewLexemName, GetElementType(NewLexemName), NumberLineNow, NumberSymbolOnLine);
-                            if (GetElementType(NewLexemName) == ElementType.NAME && !ThisVariableAlreadyExist(NewLexemName))
+                            if (GetElementType(NewLexemName) == ElementType.NAME && !ThisVariableAlreadyExist(NewLexemName, ElementType.NAME))
                             {
                                 numbers.Add(new Number() { Name = NewLexemName, Meaning = 0 });
                                 NewVariableName = NewLexemName;
@@ -489,7 +502,7 @@ namespace ELLE
             return false;
         }
 
-        // Приоритет символа
+        // Приоритет лексемы
         private int GetPriority(ElementType type)
         {
             switch (type)
@@ -523,6 +536,7 @@ namespace ELLE
                 case ElementType.IF: return 8;
                 case ElementType.WHILE: return 8;
                 case ElementType.ASSIGN: return 8;
+                case ElementType.ARRAY: return 8;
                 case ElementType.WRITE: return 8;
                 case ElementType.READ: return 8;
 
@@ -592,6 +606,12 @@ namespace ELLE
                     #region NUM
                     case ElementType.INT:
                         tempOPS.Add(original[i]);
+                        break;
+                    #endregion
+
+                    #region Array
+                    case ElementType.ARRAY:
+                        stackOperations.Push(original[i]);
                         break;
                     #endregion
 
@@ -2344,6 +2364,7 @@ namespace ELLE
                     // Если находит хоть одну из программ для результата ОПС - запоминает ее
                     case ElementType.WRITE:
                     case ElementType.READ:
+                    case ElementType.ARRAY:
                     case ElementType.IF:
                     case ElementType.ELSE:
                     case ElementType.WHILE:
@@ -2457,6 +2478,15 @@ namespace ELLE
                 {
                     switch (program.Type)
                     {
+                        #region Read
+                        case ElementType.ARRAY:
+                            if (!_whileTap)
+                            {
+
+                            }
+                            break;
+                        #endregion
+
                         #region Write
                         case ElementType.WRITE:
                             if (!_whileTap)
